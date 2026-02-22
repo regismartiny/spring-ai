@@ -9,5 +9,22 @@ spring:
       api-key: "123"
       chat:
         options:
-          model: "ministral-3-3b"
+          model: ministral-3-3b
+      embedding:
+        options:
+          model: text-embedding-nomic-embed-text-v1.5
 
+    # Vector Store Configuration
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/spring-ai"
+    username: postgres
+    password: postgres
+
+# Ingestion Control (IMPORTANT!)
+rag:
+  ingest:
+    enabled: false
