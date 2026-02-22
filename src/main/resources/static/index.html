@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Streaming com Imagens</title>
+    <style>
+        body { font-family: Arial; background:#f5f5f5; display:flex; justify-content:center; padding:20px; min-height:100vh; }
+        #chat-container { width:100%; max-width:500px; background:#fff; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); display:flex; flex-direction:column; overflow:hidden; }
+        #chat-box { flex:1; padding:15px; overflow-y:auto; white-space:pre-wrap; background:#fafafa; min-height:300px; }
+        .message { margin-bottom:10px; word-wrap:break-word; }
+        .message.user { text-align:right; color:#0b5ed7; }
+        .message.bot { text-align:left; color:#333; }
+        .message img { max-width: 200px; border-radius:5px; display:block; margin-top:5px; }
+        #input-container { display:flex; flex-wrap:wrap; border-top:1px solid #ddd; padding:5px; gap:5px; background:#fff; }
+        #username, #message, #image { flex:1 1 100px; padding:10px; border:1px solid #ccc; border-radius:5px; outline:none; }
+        #send-btn, #reset-btn { padding:10px 15px; border:none; border-radius:5px; background:#0b5ed7; color:white; cursor:pointer; flex:0 0 auto; }
+        #send-btn:hover, #reset-btn:hover { background:#084298; }
+        @media (max-width:600px) {
+            #chat-container { max-width:100%; height:100%; }
+            #chat-box { min-height:250px; }
+            #input-container { flex-direction:column; }
+            #username, #message, #image { flex:1 1 100%; }
+            #send-btn, #reset-btn { width:100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div id="chat-box"></div>
+    <div id="input-container">
+        <input type="text" id="username" placeholder="Seu nome" required>
+        <input type="text" id="message" placeholder="Digite sua mensagem" required>
+        <input type="file" id="image" accept="image/*">
+        <button id="send-btn">Enviar</button>
+        <button id="reset-btn">Nova conversa</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/event-source-polyfill@1.0.12/src/eventsource.min.js"></script>
+<script>
+    const chatBox = document.getElementById("chat-box");
+    const usernameInput = document.getElementById("username");
+    const messageInput = document.getElementById("message");
+    const imageInput = document.getElementById("image");
+    const sendBtn = document.getElementById("send-btn");
+    const resetBtn = document.getElementById("reset-btn");
+
+    let eventSource = null;
+
+    function appendMessage(sender, text, type) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message", type);
+        msgDiv.innerHTML = `${sender}: ${text}`;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return msgDiv;
+    }
+
+    async function sendUserMessage(reset = false) {
+        const username = usernameInput.value.trim();
+        const message = messageInput.value.trim();
+        const imageFile = imageInput.files[0];
+
+        if (!username || (!message && !imageFile && !reset)) return;
+
+        if (!reset && message) appendMessage("Você", message, "user");
+        if (!reset && imageFile) {
+            const reader = new FileReader();
+            reader.onload = e => appendMessage("Você", `<img src="${e.target.result}" />`, "user");
+            reader.readAsDataURL(imageFile);
+        }
+
+        // POST para /send
+        const formData = new FormData();
+        formData.append("username", username);
+        if (!reset && message) formData.append("message", message);
+        if (!reset && imageFile) formData.append("image", imageFile);
+        if (reset) formData.append("reset", "true");
+
+        await fetch("/chats/send", { method: "POST", body: formData });
+
+        // SSE streaming
+        if (eventSource) eventSource.close();
+        eventSource = new EventSourcePolyfill(`/chats/stream?username=${encodeURIComponent(username)}`);
+
+        let botDiv = appendMessage("Bot", "", "bot");
+
+        eventSource.onmessage = event => {
+            botDiv.textContent = event.data; // substitui tudo
+            chatBox.scrollTop = chatBox.scrollHeight;
+        };
+
+        eventSource.onerror = () => eventSource.close();
+
+        messageInput.value = "";
+        imageInput.value = "";
+    }
+
+    sendBtn.addEventListener("click", () => sendUserMessage(false));
+    messageInput.addEventListener("keypress", e => { if (e.key === "Enter") sendUserMessage(false); });
+    resetBtn.addEventListener("click", () => { sendUserMessage(true); chatBox.textContent = ""; });
+
+</script>
+</body>
+</html>

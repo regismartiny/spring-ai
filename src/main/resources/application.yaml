@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: demo
+
+  ai:
+    openai:
+#      base-url: http://host.docker.internal:1234 #when running inside container
+      base-url: http://localhost:1234
+      api-key: "123"
+      chat:
+        options:
+          model: "ministral-3-3b"
+
