@@ -35,7 +35,7 @@ public class ChatService {
 
     public ChatService(ChatClient.Builder chatClientBuilder, ChatMemory chatMemory) {
         chatClient = chatClientBuilder
-                .defaultSystem("Sempre responda no idioma Português")
+                .defaultSystem("Sempre responda no idioma Português (Brasil)")
                 .defaultAdvisors(PromptChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
